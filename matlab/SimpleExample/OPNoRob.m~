@@ -1,0 +1,189 @@
+% This file computes the optimal policy without robustness for a discrete
+% state markov process for cost push shocks
+classdef OPNoRob< handle
+    
+    properties
+
+        
+%% Primitives
+        
+% 1] Shocks
+N  % cardinality of state space 
+Z  % State Space
+PI % Transition kernel
+
+% 2] Preferences and technology
+mu_0    % Initial Pareto wts
+alpha_a_x % Agent's weight on output-gap fluctuations
+alpha_p_x % Planner's weight on output gap fluctuations
+alpha_a_pi % Agent's weight on inflation fluctuations
+alpha_p_pi % Planner's weight on inflation fluctuations
+
+beta    % subjective discount factor
+kappa   % degree of nominal frictions
+xstar % steady state output gap
+
+% PolicyRules 
+% 1] Inflation 
+pi
+Gamma_pi_0 
+Gamma_pi_lambda
+% 2] output gap
+x
+Gamma_x_0
+Gamma_x_lambda
+
+% 1] Committment Multiplier
+lambda_tilde
+Gamma_lambda_0
+Gamma_lambda_lambda 
+
+
+    end
+    
+    
+    methods
+        function obj=OPNoRob(varargin)
+                        switch nargin
+                            case 0
+obj.N=2; 
+obj.Z=linspace(.9,1.1,obj.N)*.5*.0000000; 
+obj.PI=ones(obj.N,obj.N)/obj.N; 
+obj.mu_0=0; 
+obj.alpha_a_x=1; 
+obj.alpha_p_x=1; 
+obj.alpha_a_pi=1; 
+obj.alpha_p_pi=1; 
+
+obj.beta=.98; 
+obj.kappa=.5;
+obj.xstar=1;
+
+                            otherwise
+                                objRob=varargin{1};
+obj.N=objRob.N; 
+obj.Z=objRob.Z; 
+obj.PI=objRob.PI; 
+obj.mu_0=varargin{2}; 
+obj.alpha_a_x=objRob.alpha_a_x; 
+obj.alpha_p_x=objRob.alpha_p_x; 
+obj.alpha_a_pi=objRob.alpha_a_pi; 
+obj.alpha_p_pi=objRob.alpha_p_pi; 
+
+obj.beta=objRob.beta; 
+obj.kappa=objRob.kappa;
+obj.xstar=objRob.xstar;
+                                
+                        end
+                                
+                                
+                            
+
+
+obj.Gamma_pi_0=ones(obj.N,1);  
+obj.Gamma_pi_lambda=ones(obj.N,1);  
+obj.Gamma_x_0=ones(obj.N,1);  
+obj.Gamma_x_lambda=ones(obj.N,1);  
+obj.Gamma_lambda_0=ones(obj.N,1); 
+obj.Gamma_lambda_lambda=ones(obj.N,1);  
+
+ for s=1:obj.N 
+            obj.pi{s}= @(lambda_tilde)  obj.Gamma_pi_0(s)+obj.Gamma_pi_lambda(s)*lambda_tilde;
+            obj.x{s}= @(lambda_tilde)  obj.Gamma_x_0{s}+obj.Gamma_x_lambda{s}*lambda_tilde;
+            obj.lambda_tilde{s}= @(lambda_tilde)  obj.Gamma_lambda_0(s)+obj.Gamma_lambda_lambda(s)*lambda_tilde;
+        end
+
+            
+        end
+        
+        function [res, user, iflag] = resCrossEq(obj,n,coeff,user,iflag)
+            
+            valGamma_pi_0=coeff(1:obj.N)';
+            valGamma_pi_lambda=coeff(obj.N+1:end)';
+            
+            valGamma_lambda_0=-valGamma_pi_0*(obj.alpha_p_pi+obj.mu_0*obj.alpha_a_pi);
+            valGamma_lambda_lambda=-valGamma_pi_lambda*(obj.alpha_p_pi+obj.mu_0*obj.alpha_a_pi)+1;
+            
+            BarGamma_lambda_0=obj.PI*valGamma_lambda_0;
+            BarGamma_pi_0=obj.PI*valGamma_pi_0;
+            
+            BarGamma_lambda_lambda=obj.PI*valGamma_lambda_lambda;
+            BarGamma_pi_lambda=obj.PI*valGamma_pi_lambda;
+            
+            
+            res_1=obj.kappa^2/(obj.alpha_p_x+obj.mu_0*obj.alpha_a_x)...
+                  + obj.beta*(valGamma_lambda_lambda.*BarGamma_pi_lambda)...
+                  - valGamma_pi_lambda*(1+((obj.alpha_p_pi+obj.mu_0*obj.alpha_a_pi)*obj.kappa^2)/(obj.alpha_p_x+obj.mu_0*obj.alpha_a_x));
+              
+              res_2=-valGamma_pi_0*(1+((obj.alpha_p_pi+obj.mu_0*obj.alpha_a_pi)*obj.kappa^2)/(obj.alpha_p_x+obj.mu_0*obj.alpha_a_x))...
+                  + obj.kappa*obj.xstar+obj.Z'+obj.beta*(BarGamma_pi_0+valGamma_lambda_0.*BarGamma_pi_lambda);
+              
+                res=[res_1;res_2];
+            
+            
+        end
+            
+        function solveCrossEq(obj)
+        coeff0 = zeros(obj.N*2, 1)';
+        [coeff, fvec, user, ifail] = nag_roots_sys_func_easy(@obj.resCrossEq, coeff0);
+        obj.Gamma_pi_0=coeff(1:obj.N)';
+        obj.Gamma_pi_lambda=coeff(obj.N+1:end)';
+        obj.Gamma_lambda_0=-obj.Gamma_pi_0*(obj.alpha_p_pi+obj.mu_0*obj.alpha_a_pi);
+        obj.Gamma_lambda_lambda=-obj.Gamma_pi_lambda*(1+obj.alpha_p_pi+obj.mu_0*obj.alpha_a_pi)+1;
+        
+        for s=1:obj.N 
+            obj.pi{s}= @(lambda_tilde)  obj.Gamma_pi_0(s)+obj.Gamma_pi_lambda(s)*lambda_tilde;
+        %    obj.x{z}= @(lambda_tilde)  obj.Gamma_x_0{z}+obj.Gamma_x_lambda{z}*lambda_tilde;
+            obj.lambda_tilde{s}= @(lambda_tilde)  obj.Gamma_lambda_0(s)+obj.Gamma_lambda_lambda(s)*lambda_tilde;
+        end
+
+        
+            
+        end
+        function [pi, lambda_tilde, s]=simulate(obj,T,lambda0,s0)
+            lambda_tilde=ones(T,1)*lambda0;
+            pi=ones(T-1,1);
+            s=ones(T,1)*s0;
+            for t=2:T
+                pi(t-1)=obj.pi{s(t-1)}(lambda_tilde(t-1));
+                s(t)=(discretesample(obj.PI(s(t),:),1));
+                lambda_tilde(t)=obj.lambda_tilde{s(t-1)}(lambda_tilde(t-1));
+                
+            end
+        end
+        
+        
+        function error=error_in_pc(obj,state)
+            mu_today=obj.mu_0;
+            lambda_tilde_today=state.lambda_tilde;
+            s=state.s;
+            
+            for s_star=1:obj.N
+                
+                pi_star(s_star)=obj.pi{s_star}(obj.lambda_tilde{s_star,s}([lambda_tilde_today])]);                                
+            end
+            
+            % m_a_star
+            
+            % 
+            
+            E_pi_star=sum(obj.PI(s,:).*m_a_star.*pi_star);
+            
+            other_stuff_in_rhs=(obj.kappa^2/(obj.alpha_p_x+mu_today*obj.alpha_a_x))*lambda_tilde_today+obj.kappa*obj.xstar+obj.Z(s);
+            
+            
+            
+            pi_coeff=(1+obj.kappa^2*(obj.alpha_p_pi+ mu_today*obj.alpha_a_pi)./(obj.alpha_p_x+ mu_today*obj.alpha_a_x));
+            
+            
+            error=obj.pi{s}([mu_today lambda_tilde_today])-pi_coeff^(-1).*(other_stuff_in_rhs+obj.beta*E_pi_star);
+            
+            
+            
+            
+        end
+        
+        
+    end
+end
+        

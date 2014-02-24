@@ -1,0 +1,73 @@
+
+plot_domain=op.obtain_plot_domain(10,1)
+
+s=1
+for s_star=1:2
+x{s_star}=@(end_state) (op.mu{s_star}(end_state)-end_state(1))
+end
+
+name_of_function='$\mu(z^*)-\mu$'
+C={'b','r'}
+figure()
+
+if length(x)>1
+    for s_star=1:length(x)
+for ctr=1:4
+subplot(2,2,ctr)
+x_data=plot_domain.mu{ctr}(:,1);
+y_data=x{s_star}(plot_domain.mu{ctr});
+plot(x_data,y_data,'linewidth',3,'color',C{s_star})
+xlabel('$\mu$','interpreter','latex')
+ylabel(name_of_function,'interpreter','latex')
+title(strcat('$\tilde{\lambda}$= ',num2str(plot_domain.mu{ctr}(1,2))) ,'interpreter','latex' )
+hold on
+end    
+
+
+figure()
+for ctr=1:4
+subplot(2,2,ctr)
+x_data=plot_domain.lambda_tilde{ctr}(:,2);
+y_data=x{s_star}(plot_domain.lambda_tilde{ctr});
+plot(x_data,y_data,'linewidth',3,'color',C{s_star})
+xlabel('$\tilde{\lambda}$','interpreter','latex')
+ylabel(name_of_function,'interpreter','latex')
+title(strcat('$\mu$= ',num2str(plot_domain.mu{ctr}(1,2))) ,'interpreter','latex' )
+hold on
+end
+
+
+
+
+    end
+else
+    
+ 
+    
+figure()
+for ctr=1:4
+subplot(2,2,ctr)
+x_data=plot_domain.mu{ctr}(:,1);
+y_data=x(plot_domain.mu{ctr});
+plot(x_data,y_data,'linewidth',3)
+xlabel('$\mu$','interpreter','latex')
+ylabel(name_of_function,'interpreter','latex')
+title(strcat('$\tilde{\lambda}$= ',num2str(plot_domain.mu{ctr}(1,2))) ,'interpreter','latex' )
+end
+
+
+figure()
+for ctr=1:4
+subplot(2,2,ctr)
+x_data=plot_domain.lambda_tilde{ctr}(:,2);
+y_data=x(plot_domain.lambda_tilde{ctr});
+plot(x_data,y_data,'linewidth',3)
+xlabel('$\tilde{\lambda}$','interpreter','latex')
+ylabel(name_of_function,'interpreter','latex')
+title(strcat('$\mu$= ',num2str(plot_domain.mu{ctr}(1,2))) ,'interpreter','latex' )
+end
+
+
+
+end
+

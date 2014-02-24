@@ -1,0 +1,43 @@
+  close all
+  
+
+lambda0=0
+mu0=2
+s0=2
+T=2000
+obj=op
+
+sample_path_lambda_tilde=ones(T,1)*lambda0;
+            sample_path_mu=ones(T,1)*mu0;                        
+            sample_path_s=ones(T,1)*s0;
+            sample_path_pi=ones(T,1)*0;
+            sample_path_V_a=ones(T,1)*0;
+            sample_path_V_p=ones(T,1)*0;
+            
+            for t=2:T
+                
+                
+                sample_path_s(t)=(discretesample(obj.PI(sample_path_s(t),:),1));
+                sample_path_lambda_tilde(t)=obj.lambda_tilde{sample_path_s(t),sample_path_s(t-1)}([sample_path_mu(t-1),sample_path_lambda_tilde(t-1)]);
+                sample_path_mu(t)=obj.mu{sample_path_s(t),sample_path_s(t-1)}([sample_path_mu(t-1),sample_path_lambda_tilde(t-1)]);
+                sample_path_V_p(t-1)=op.V_p{sample_path_s(t-1)}([sample_path_mu(t-1),sample_path_lambda_tilde(t-1)] );
+                sample_path_V_a(t-1)=op.V_a{sample_path_s(t-1)}([sample_path_mu(t-1),sample_path_lambda_tilde(t-1)] );                
+           end
+            
+%      plot(sample_path_mu,sample_path_lambda_tilde)
+      figure()
+      subplot(2,1,1)
+      plot(sample_path_V_a(1:end-1))
+      hold on
+      plot(sample_path_V_p(1:end-1),':r')
+      
+      
+      subplot(2,1,2)
+      plot(sample_path_mu,sample_path_lambda_tilde)
+      
+      figure()
+      plot(sample_path_mu)
+      
+      
+            
+            

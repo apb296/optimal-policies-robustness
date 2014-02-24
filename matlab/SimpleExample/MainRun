@@ -1,0 +1,7 @@
+clear all
+op=OPRob();
+op.build_grid()
+op.domain
+op.initialize()
+op.list_pi
+op.update_policy_rules()
