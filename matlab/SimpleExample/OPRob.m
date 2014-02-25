@@ -130,7 +130,7 @@ classdef OPRob< handle
             obj.tol=1e-5;
             obj.grelax=.05;
             
-            obj.mu_min=0;
+            obj.mu_min=.001;
             obj.mu_max=3;
             
             op_norob=OPNoRob(obj,obj.mu_min);
@@ -191,7 +191,7 @@ classdef OPRob< handle
             end
             
             obj.vec_omega_x=obj.alpha_p_x+obj.domain(:,1)*obj.alpha_a_x;
-            obj.vec_omega_pi=obj.alpha_p_x+obj.domain(:,1)*obj.alpha_a_pi;
+            obj.vec_omega_pi=obj.alpha_p_pi+obj.domain(:,1)*obj.alpha_a_pi;
             
         end
         
@@ -601,17 +601,6 @@ classdef OPRob< handle
             
         end
         
-        function [sample_path_lambda_tilde,sample_path_mu, sample_path_s]= simulate(obj,T,lambda0,mu0)
-            sample_path_lambda_tilde=ones(T,1)*lambda0;
-            sample_path_mu=ones(T,1)*mu0;
-            sample_path_s=ones(T,1)*s0;
-            
-            for t=2:T
-                sample_path_s(t)=(discretesample(obj.PI(sample_path_s(t),:),1));
-                sample_path_lambda_tilde(t)=obj.lambda_tilde{sample_path_s(t-1),sample_path_s(t)}(sample_path_lambda_tilde(t-1),sample_path_mu(t-1));
-                
-            end
-        end
         
         
         function error=error_in_pc(obj)
@@ -781,9 +770,68 @@ classdef OPRob< handle
         end
         
         
+        function [SamplePath]=get_simulatios(obj,mu0,lambda0,s0,T)
+            
+SamplePath=[];
+sample_path_lambda_tilde=ones(T,1)*lambda0;
+            sample_path_mu=ones(T,1)*mu0;                        
+            sample_path_s=ones(T,1)*s0;
+            sample_path_pi=ones(T-1,1)*0;
+            sample_path_V_a=ones(T-1,1)*0;
+            sample_path_V_p=ones(T-1,1)*0;
+            
+            for t=2:T
+                
+                
+                sample_path_s(t)=(discretesample(obj.PI(sample_path_s(t),:),1));
+                sample_path_lambda_tilde(t)=obj.lambda_tilde{sample_path_s(t),sample_path_s(t-1)}([sample_path_mu(t-1),sample_path_lambda_tilde(t-1)]);
+                sample_path_mu(t)=obj.mu{sample_path_s(t),sample_path_s(t-1)}([sample_path_mu(t-1),sample_path_lambda_tilde(t-1)]);
+            end
+           
+            
+            
+    for s=1:obj.N
+        index_s{s}=find(sample_path_s==s);
+        sample_path_pi(index_s{s})=obj.pi{s}([sample_path_mu(index_s{s}),sample_path_lambda_tilde(index_s{s})] );
+        sample_path_V_a(index_s{s})=obj.V_a{s}([sample_path_mu(index_s{s}),sample_path_lambda_tilde(index_s{s})] );
+        sample_path_V_p(index_s{s})=obj.V_p{s}([sample_path_mu(index_s{s}),sample_path_lambda_tilde(index_s{s})] );
         
+    end
+    SamplePath.mu=sample_path_mu;
+    SamplePath.lambda_tilde=sample_path_lambda_tilde;
+    SamplePath.s=sample_path_s;
+    SamplePath.V_a=sample_path_V_a;
+    SamplePath.V_p=sample_path_V_p;
+    SamplePath.pi=sample_path_pi;
+            
+ 
+    figure()
+    subplot(2,2,1)
+    plot(sample_path_mu,'k','linewidth',1)
+    xlabel('time')
+    ylabel('$\mu$','interpreter','latex')
+    title('mu')
+    
+    subplot(2,2,2)
+    plot(sample_path_lambda_tilde,'k','linewidth',1)
+    xlabel('time')
+    ylabel('$\tilde{\lambda}$','interpreter','latex')
+   title('lambda-tilde')
+    
+    subplot(2,2,3)
+    plot(sample_path_pi,'k','linewidth',1)
+    xlabel('time')
+    ylabel('$\pi$','interpreter','latex')
+    title('inflation')
+    subplot(2,2,4)
+    plot(sample_path_V_a,'k','linewidth',1)
+    hold on
+    plot(sample_path_V_p,'r','linewidth',1)
+    xlabel('time')
+    ylabel('$V^i$','interpreter','latex')
+    title('values')
     end
     
     
-    
+    end
 end

@@ -2,13 +2,14 @@ clear all
 close all
 
 op=OPRob();
-op.theta_a=2000000;
-op.theta_p=2000000;
+op.theta_a=.5000000;
+op.theta_p=.5000000;
+op.alpha_a_pi=0;
+op.alpha_p_x=0;
 
 op.build_grid()
 op.initialize()
 op.update_policy_rules()
-
 
 for k=1:10
     tic
@@ -24,5 +25,5 @@ op.update_policy_rules()
 op.update_belief_distortions()
 max(abs(op.error_in_pc()))
 max(abs(op.error_in_foc(2)))
-    
+op.get_simulatios(1,0,1,1500)   
     
